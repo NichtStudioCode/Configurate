@@ -91,6 +91,8 @@ if (project.hasProperty("spongeKeyStore")) {
 }
 
 indra {
+    publishAllTo("xenondevs", "https://repo.xenondevs.xyz/releases/")
+    
     github("SpongePowered", "Configurate") {
         publishing(true) // GH Packages
         ci(true) // GH Actions
