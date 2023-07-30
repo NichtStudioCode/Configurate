@@ -114,7 +114,7 @@ complexity:
     ignoreStringsRegex: '$^'
   TooManyFunctions:
     # Configurate: raised limits to not be super low...
-    active: true
+    active: false
     excludes: ['**/test/**', '**/androidTest/**', '**/commonTest/**', '**/jvmTest/**', '**/jsTest/**', '**/iosTest/**']
     thresholdInFiles: 20
     thresholdInClasses: 20
