@@ -105,6 +105,76 @@ class YamlConfigurationLoaderTest {
         assertEquals(readLines(this.getClass().getResource("write-expected.yml")), Files.readAllLines(target, StandardCharsets.UTF_8));
     }
 
+    @Test
+    void testReadComments() throws IOException {
+        final ConfigurationNode expected = CommentedConfigurationNode.root(n ->
+            n.node("waffles-with-syrup")
+                .comment("hello world")
+                .act(p ->
+                    p.node("ingredients")
+                        .comment("multi-line\ncomments")
+                        .act(i -> {
+                            i.appendListNode().set("waffles").comment("would you've guessed the ingredients?");
+                            i.appendListNode().set("syrup").comment("I certainly didn't");
+                        })
+                ));
+
+        final URL url = this.getClass().getResource("comments-test.yml");
+        final YamlConfigurationLoader loader = YamlConfigurationLoader.builder()
+            .url(url).build();
+
+        final ConfigurationNode actual = loader.load();
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void testWriteComments(final @TempDir Path tempDir) throws IOException {
+        final Path target = tempDir.resolve("comments-write.yml");
+        final ConfigurationNode node = CommentedConfigurationNode.root(n ->
+            n.node("waffles-with-syrup")
+                .comment("hello world")
+                .act(p ->
+                    p.node("ingredients")
+                        .comment("multi-line\ncomments")
+                        .act(i -> {
+                            i.appendListNode().set("waffles").comment("would you've guessed the ingredients?");
+                            i.appendListNode().set("syrup").comment("I certainly didn't");
+                        })
+                ));
+
+        final YamlConfigurationLoader loader = YamlConfigurationLoader.builder()
+            .path(target)
+            .nodeStyle(NodeStyle.BLOCK)
+            .build();
+
+        loader.save(node);
+
+        assertEquals(
+            readLines(this.getClass().getResource("comments-test.yml")),
+            Files.readAllLines(target, StandardCharsets.UTF_8)
+        );
+    }
+
+    @Test
+    void testReadWriteComments(final @TempDir Path tempDir) throws IOException {
+        final URL source = this.getClass().getResource("comments-test.yml");
+        final Path destination = tempDir.resolve("comments-readwrite.yml");
+
+        final YamlConfigurationLoader loader = YamlConfigurationLoader.builder()
+            .path(destination)
+            .url(source)
+            .nodeStyle(NodeStyle.BLOCK)
+            .build();
+
+        final ConfigurationNode sourceNode = loader.load();
+        loader.save(sourceNode);
+
+        assertEquals(
+            readLines(source),
+            Files.readAllLines(destination, StandardCharsets.UTF_8)
+        );
+    }
+
     private static List<String> readLines(final URL source) throws IOException {
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(source.openStream(), StandardCharsets.UTF_8))) {
             return reader.lines().collect(Collectors.toList());
