@@ -153,7 +153,7 @@ plugins.withId('org.jetbrains.kotlin.jvm') {
 
 // Set up automatic module name
 tasks.jar {
-    manifest.attributes["Automatic-Module-Name"] = "${project.group}.configurate.${project.name.replace('-', '.')}"
+    manifest.attributes["Automatic-Module-Name"] = "org.spongepowered.configurate.${project.name.replace('-', '.')}"
 }
 
 // Configure target versions
