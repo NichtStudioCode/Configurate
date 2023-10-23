@@ -43,11 +43,9 @@ tasks.withType(DokkaTask).configureEach {
     moduleName.set("configurate-${project.name}")
     dokkaSourceSets.configureEach {
         includes.from(file("src/main/packages.md"))
-        samples.from(
-            kotlin.sourceSets.named("examples").map {
-                it.kotlin.sourceDirectories
-            }
-        )
+        samples.from(kotlin.sourceSets.named("examples").map {
+            it.kotlin.sourceDirectories
+        })
         jdkVersion.set(8)
         reportUndocumented.set(true)
     }

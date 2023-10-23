@@ -21,19 +21,21 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurationNode;
 import org.spongepowered.configurate.ConfigurationOptions;
+import org.spongepowered.configurate.loader.AbstractConfigurationLoader;
 import org.yaml.snakeyaml.LoaderOptions;
 import org.yaml.snakeyaml.comments.CommentLine;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.nodes.MappingNode;
 import org.yaml.snakeyaml.nodes.Node;
 import org.yaml.snakeyaml.nodes.NodeId;
+import org.yaml.snakeyaml.nodes.NodeTuple;
 import org.yaml.snakeyaml.nodes.ScalarNode;
+import org.yaml.snakeyaml.nodes.SequenceNode;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 class YamlConstructor extends Constructor {
 
@@ -62,17 +64,20 @@ class YamlConstructor extends Constructor {
         if (yamlNode.getNodeId() == NodeId.mapping) {
             // make sure to mark it as a map type, even if the map itself is empty
             node.raw(Collections.emptyMap());
+            final MappingNode mapping = (MappingNode) yamlNode;
+            if (mapping.getFlowStyle() != null) {
+                node.hint(YamlConfigurationLoader.NODE_STYLE, NodeStyle.fromSnakeYaml(mapping.getFlowStyle()));
+            }
 
-            ((MappingNode) yamlNode).getValue().forEach(tuple -> {
-                // I don't think it's possible to have a non-scalar node as key
-                final ScalarNode keyNode = (ScalarNode) tuple.getKeyNode();
+            for (final NodeTuple tuple : mapping.getValue()) {
+                final ConfigurationNode keyNode = (ConfigurationNode) this.constructObject(tuple.getKeyNode());
                 final Node valueNode = tuple.getValueNode();
 
                 // comments are on the key, not the value
-                node.node(keyNode.getValue())
+                node.node(keyNode.raw())
                     .from((ConfigurationNode) constructObject(valueNode))
-                    .comment(commentFor(keyNode.getBlockComments()));
-            });
+                    .comment(commentFor(tuple.getKeyNode().getBlockComments()));
+            }
 
             return node.comment(commentFor(yamlNode.getBlockComments()));
         }
@@ -81,11 +86,17 @@ class YamlConstructor extends Constructor {
         if (raw instanceof Collection<?>) {
             // make sure to mark it as a list type, even if the collection itself is empty
             node.raw(Collections.emptyList());
+            if (((SequenceNode) yamlNode).getFlowStyle() != null) {
+                node.hint(YamlConfigurationLoader.NODE_STYLE, NodeStyle.fromSnakeYaml(((SequenceNode) yamlNode).getFlowStyle()));
+            }
 
-            ((Collection<?>) raw).forEach(value -> {
+            for (final Object value : (Collection<?>) raw) {
                 node.appendListNode().from((ConfigurationNode) value);
-            });
+            }
         } else {
+            if (yamlNode instanceof ScalarNode) {
+                node.hint(YamlConfigurationLoader.SCALAR_STYLE, ScalarStyle.fromSnakeYaml(((ScalarNode) yamlNode).getScalarStyle()));
+            }
             node.raw(raw);
         }
 
@@ -96,16 +107,20 @@ class YamlConstructor extends Constructor {
         if (commentLines == null || commentLines.isEmpty()) {
             return null;
         }
-        return commentLines.stream()
-            .map(input -> {
-                final String lineStripped = removeLineBreaksForLine(input.getValue());
-                if (!lineStripped.isEmpty() && lineStripped.charAt(0) == ' ') {
-                    return lineStripped.substring(1);
-                } else {
-                    return lineStripped;
-                }
-            })
-            .collect(Collectors.joining("\n"));
+
+        final StringBuilder outputBuilder = new StringBuilder();
+        for (final CommentLine line : commentLines) {
+            if (outputBuilder.length() > 0) {
+                outputBuilder.append(AbstractConfigurationLoader.CONFIGURATE_LINE_SEPARATOR);
+            }
+            final String lineStripped = removeLineBreaksForLine(line.getValue());
+            if (!lineStripped.isEmpty() && lineStripped.charAt(0) == ' ') {
+                outputBuilder.append(lineStripped, 1, lineStripped.length());
+            } else {
+                outputBuilder.append(lineStripped);
+            }
+        }
+        return outputBuilder.toString();
     }
 
     private static String removeLineBreaksForLine(final String line) {
